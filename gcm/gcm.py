@@ -309,15 +309,21 @@ class GCM(object):
                 "Exceded number of registration_ids")
 
         backoff = self.BACKOFF_INITIAL_DELAY
+        unavailable_err = None
         for attempt in range(retries):
             payload = self.construct_payload(
                 registration_ids, data, collapse_key,
                 delay_while_idle, time_to_live, True, dry_run
             )
-            response = self.make_request(payload, is_json=True)
-            info = self.handle_json_response(response, registration_ids)
+            try:
+                response = self.make_request(payload, is_json=True)
+                info = self.handle_json_response(response, registration_ids)
+                unsent_reg_ids = self.extract_unsent_reg_ids(info)
+                unavailable_err = None
+            except GCMUnavailableException as e:
+                unsent_reg_ids = registration_ids
+                unavailable_err = e
 
-            unsent_reg_ids = self.extract_unsent_reg_ids(info)
             if unsent_reg_ids:
                 registration_ids = unsent_reg_ids
                 sleep_time = backoff / 2 + random.randrange(backoff)
@@ -326,4 +332,8 @@ class GCM(object):
                     backoff *= 2
             else:
                 break
+
+        if unavailable_err is not None:
+            raise unavailable_err
+
         return info
