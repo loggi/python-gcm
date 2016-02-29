@@ -103,14 +103,19 @@ class GCM(object):
     MAX_BACKOFF_DELAY = 1024000
     # TTL in seconds
     GCM_TTL = 2419200
+    # Request timeout in seconds
+    REQUEST_TIMEOUT = 2.5
 
-    def __init__(self, api_key, url=GCM_URL, proxy=None):
+    def __init__(self, api_key, url=GCM_URL, proxy=None, timeout=None):
         """ api_key : google api key
             url: url of gcm service.
             proxy: can be string "http://host:port" or dict {'https':'host:port'}
         """
         self.api_key = api_key
         self.url = url
+        if timeout is None:
+            timeout = self.REQUEST_TIMEOUT
+        self.timeout = timeout
 
         if isinstance(proxy, str):
             protocol = url.split(':')[0]
@@ -186,7 +191,8 @@ class GCM(object):
 
         response = requests.post(
             self.url, data=data, headers=self.headers,
-            proxies=self.proxy
+            proxies=self.proxy,
+            timeout=self.timeout
         )
         # Successful response
         if response.status_code == 200:
